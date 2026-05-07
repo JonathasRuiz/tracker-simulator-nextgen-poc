@@ -1,0 +1,96 @@
+# Default values for tracker_simulator.
+global:
+  appName: "tracker-simulator-nextgen"
+  secrets:
+    googleMapsApiKey: "<YOUR_GOOGLE_API_KEY>"
+
+  jaeger:
+    host: &jaegerHost "<YOUR_INFRA_HOST_IP_OR_DNS>"
+    port: 4317
+
+  redis:
+    host: &redisHost "<YOUR_INFRA_HOST_IP_OR_DNS>"
+    port: 6379
+    streamKey: "latency:metrics:stream"
+
+  mqtt:
+    host: &mqttHost "<YOUR_INFRA_HOST_IP_OR_DNS>"
+    port: 1883
+    quicPort: 14567
+
+  envoy:
+    host: &envoyHost "<YOUR_LOAD_BALANCER_IP_OR_DNS>"
+    trackerServerGoPort: &trackerServerGoPort 18098
+    trackerServerTlsGoPort: &trackerServerTlsGoPort 8098
+    trackerServerQuicGoPort: &trackerServerQuicGoPort 8444
+    trackerClientGoPort: &trackerClientGoPort 8099
+    trackerAnalyticsPort: &trackerAnalyticsPort 5050
+    communicationsAppPort: &communicationsAppPort 8080
+
+
+trackerservergo:
+  trackerServerGo:
+    host: *networkHost
+    port: 18098
+    tlsPort: 8098
+    quicPort: 8444
+    trackerClientHost: *envoyHost
+    trackerClientPort: *trackerClientGoPort
+    image:
+      repository: docker.io/jhonnyvennom/tracker-server-go
+      tag: "2.1.0"
+      arch: amd64
+    replicas: 1
+    resources:
+      requests: { memory: "256Mi", cpu: "128m" }
+      limits:   { memory: "256Mi", cpu: "128m" }
+    nodeSelector: []
+
+trackerclientgo:
+  trackerClientGo:
+    host: *networkHost
+    port: 8099
+    trackerServerGoHost: *envoyHost
+    trackerServerGoPort: *trackerServerGoPort
+    trackerServerGoTlsPort: *trackerServerTlsGoPort
+    trackerServerGoGrpcTlsPort: *trackerServerTlsGoPort
+    metricsPath: "/api/v1/metrics"
+    isTls: false
+    quicPort: *trackerServerQuicGoPort
+    image:
+      repository: docker.io/jhonnyvennom/tracker-client-go
+      tag: "2.2.1"
+      arch: amd64
+    replicas: 1
+    resources:
+      requests: { memory: "256Mi", cpu: "128m" }
+      limits:   { memory: "256Mi", cpu: "128m" }
+    nodeSelector: []
+
+communicationsapp:
+  communicationsApp:
+    host: *networkHost
+    port: 80
+    servicePort: 8080
+    image:
+      repository: docker.io/jhonnyvennom/communications_app
+      tag: "1.7.2"
+      arch: amd64
+    replicas: 1
+    resources:
+      requests: { memory: "256Mi", cpu: "128m" }
+      limits:   { memory: "256Mi", cpu: "128m" }
+    nodeSelector: []
+      
+trackeranalytics:
+  trackerAnalytics:
+    port: 5050
+    image:
+      repository: docker.io/jhonnyvennom/tracker-analytics
+      tag: "1.2.1"
+      arch: amd64
+    replicas: 1
+    resources:
+      requests: { memory: "256Mi", cpu: "128m" }
+      limits:   { memory: "256Mi", cpu: "128m" }
+    nodeSelector: []

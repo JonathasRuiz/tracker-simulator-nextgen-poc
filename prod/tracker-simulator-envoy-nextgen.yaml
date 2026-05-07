@@ -1,0 +1,19 @@
+# Envoy templating values
+global:
+  appName: "tracker-simulator-envoy-nextgen"
+  envoy:
+    serviceType: LoadBalancer
+    envoyPorts:
+      trackerServerGoPort: 18098
+      trackerServerTlsGoPort: 8098
+      trackerServerQuicGoPort: 8444
+      trackerClientGoPort: 8099
+      trackerAnalyticsPort: 5050
+      communicationsAppPort: 8080
+    appPorts:
+      trackerServerGoPort: 18098
+      trackerServerTlsGoPort: 8098
+      trackerServerQuicGoPort: 8444
+      trackerClientGoPort: 8099
+      trackerAnalyticsPort: 5050
+      communicationsAppPort: 8080
