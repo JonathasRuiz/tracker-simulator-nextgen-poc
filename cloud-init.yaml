@@ -1,0 +1,76 @@
+#cloud-config
+write_files:
+  - path: /opt/myapp/prometheus.infra.yml
+    content: |
+      global:
+        scrape_interval: 15s
+
+      scrape_configs:
+        - job_name: 'prometheus'
+          scrape_interval: 5s
+          static_configs:
+            - targets: ['prometheus:9090']
+        - job_name: 'tracker'
+          scrape_interval: 5s
+          metrics_path: '/q/metrics'
+          static_configs:
+            - targets: []
+
+  - path: /opt/myapp/docker-compose.yml
+    content: |
+      services:
+        redis:
+          image: docker.io/redis
+          ports:
+            - '6379:6379'
+          networks:
+            - horizontalscaling
+        emqx:
+          image: docker.io/emqx/emqx:5.8.3
+          ports:
+            - "1883:1883"
+            - "9001:8083"
+            - "8090:8083"
+            - "14567:14567/udp"
+            - "18083:18083"
+          environment:
+            - EMQX_ALLOW_ANONYMOUS=true
+            - EMQX_LISTENERS__QUIC__DEFAULT__ENABLED=true
+            - EMQX_LISTENERS__QUIC__DEFAULT__KEYFILE=etc/certs/key.pem
+            - EMQX_LISTENERS__QUIC__DEFAULT__CERTFILE=etc/certs/cert.pem
+          networks:
+            - horizontalscaling
+        jaeger-all-in-one:
+          container_name: jaeger
+          image: jaegertracing/all-in-one:latest
+          ports:
+            - "15000:16686"
+            - "14268:14268"
+            - "4317:4317"
+            - "4318:4318"
+            - "14250:14250"
+          environment:
+            - COLLECTOR_OTLP_ENABLED=true
+          networks:
+            - horizontalscaling
+        prometheus:
+          image: docker.io/prom/prometheus:v2.26.0
+          container_name: prometheus
+          ports:
+            - 9090:9090
+          volumes:
+            - ./prometheus.infra.yml:/etc/prometheus/prometheus.yml
+          command: --config.file=/etc/prometheus/prometheus.yml
+          networks:
+            - horizontalscaling
+      networks:
+        horizontalscaling:
+          driver: bridge
+
+runcmd:
+  - while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 2; done
+  - apt-get update -y
+  - apt-get install -y docker.io docker-compose-v2
+  - systemctl enable docker
+  - systemctl start docker
+  - docker compose -f /opt/myapp/docker-compose.yml up -d
